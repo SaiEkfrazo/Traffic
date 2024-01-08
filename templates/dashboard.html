@@ -1,0 +1,62 @@
+{% extends 'base.html' %}
+{% block content %}
+{% load static %}
+
+<div class="container mt-5">
+    <div class="table-responsive">
+        <table class="table table-striped" style="font-size: 14px;">
+            <thead class="table-dark">
+                <tr>
+                    <th scope="col">Sl.No</th>
+                    <th scope="col">Date</th>
+                    <th scope="col">Time</th>
+                    <th scope="col">Location</th>
+                    <th scope="col">Number Plate</th>
+                    <th scope="col">Owner Name</th>
+                    <th scope="col">Violation Type</th>
+                    <th scope="col">Section</th>
+                    <th scope="col">Image</th>
+                    <th scope="col">Video</th>
+                    <th scope="col">Camera</th>
+                    <th scope="col">Report</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- Loop through the retrieved data and display in the table -->
+                {% for record in traffic_records %}
+                    <tr>
+                        <td style="font-size: 14px;">{{ record.id }}</td>
+                        <td style="font-size: 14px;">{{ record.date }}</td>
+                        <td style="font-size: 14px;">{{ record.time }}</td>
+                        <td style="font-size: 14px;">{{ record.location }}</td>
+                        <td style="font-size: 14px;">{{ record.number_plate }}</td>
+                        <td style="font-size: 14px;">{{ record.owner_name }}</td>
+                        <td style="font-size: 14px;">{{ record.violation_type }}</td>
+                        <td style="font-size: 14px;">{{ record.section }}</td>
+                        <td>
+                            <a href="{% static '' %}{{ record.image }}" data-lightbox="images" data-title="Click to zoom">
+                                Click here for image
+                            </a>
+                            <!-- <img src="{% static '' %}{{ record.image }}" alt="{{ record.image }}"> -->
+                        </td>
+                        <td>
+                            <video controls crossorigin playsinline id="player" data-plyr-provider="html" data-plyr-embed-id="{% static '' %}{{ record.video }}">
+                                Your browser does not support the video tag.
+                            </video>
+                        </td>
+                        
+
+                        <td style="font-size: 14px;">{{ record.camera }}</td>
+                        <td style="font-size: 14px;">{{ record.report }}</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Use the static tag to render the image -->
+<img src="{% static '/images/9074c9e9-fe5d-4ca1-8ac8-cdc0ca4b79b3.jpg' %}" alt="some image">
+
+
+{% endblock %}
