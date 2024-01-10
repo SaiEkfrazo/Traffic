@@ -2,7 +2,50 @@
 {% block content %}
 {% load static %}
 
+<nav class="navbar navbar-expand-lg navbar-light bg-light">
+    <div class="container-fluid justify-content-between">
+        <!-- Brand -->
+        <a class="navbar-brand" href="#">Traffic</a>
+
+        <!-- Logout button -->
+        <ul class="navbar-nav">
+            <li class="nav-item">
+                <a class="nav-link" href="{% url 'logout' %}">Logout</a>
+            </li>
+        </ul>
+    </div>
+</nav>
+
 <div class="container mt-5">
+    <form id="filterForm" class="mb-4">
+        <div class="row g-3">
+            <div class="col-md-2">
+                <input type="date" class="form-control" name="from_date" placeholder="From Date">
+            </div>
+            <div class="col-md-2">
+                <input type="date" class="form-control" name="to_date" placeholder="To Date">
+            </div>
+            <div class="col-md-2">
+                <input type="text" class="form-control" name="location" placeholder="Location">
+            </div>
+            <div class="col-md-2">
+                <input type="text" class="form-control" name="camera" placeholder="Camera">
+            </div>
+            <div class="col-md-2">
+                <input type="text" class="form-control" name="violation_type" placeholder="Violation Type">
+            </div>
+
+            <div class="col-md-2">
+                <button type="submit" class="btn btn-primary">Filter</button>
+                <button type="button" id="resetButton" class="btn btn-secondary">Reset</button>
+            </div>
+        </div>
+    </form>
+
+    <div class="text-center">
+        <button type="button" id="downloadButton" class="btn btn-success m-3">Download CSV</button>
+    </div>
+
     <div class="table-responsive">
         <table class="table table-striped" style="font-size: 14px;">
             <thead class="table-dark">
@@ -21,42 +64,236 @@
                     <th scope="col">Report</th>
                 </tr>
             </thead>
-            <tbody>
-                <!-- Loop through the retrieved data and display in the table -->
-                {% for record in traffic_records %}
-                    <tr>
-                        <td style="font-size: 14px;">{{ record.id }}</td>
-                        <td style="font-size: 14px;">{{ record.date }}</td>
-                        <td style="font-size: 14px;">{{ record.time }}</td>
-                        <td style="font-size: 14px;">{{ record.location }}</td>
-                        <td style="font-size: 14px;">{{ record.number_plate }}</td>
-                        <td style="font-size: 14px;">{{ record.owner_name }}</td>
-                        <td style="font-size: 14px;">{{ record.violation_type }}</td>
-                        <td style="font-size: 14px;">{{ record.section }}</td>
-                        <td>
-                            <a href="{% static '' %}{{ record.image }}" data-lightbox="images" data-title="Click to zoom">
-                                Click here for image
-                            </a>
-                            <!-- <img src="{% static '' %}{{ record.image }}" alt="{{ record.image }}"> -->
-                        </td>
-                        <td>
-                            <video controls crossorigin playsinline id="player" data-plyr-provider="html" data-plyr-embed-id="{% static '' %}{{ record.video }}">
-                                Your browser does not support the video tag.
-                            </video>
-                        </td>
-                        
-
-                        <td style="font-size: 14px;">{{ record.camera }}</td>
-                        <td style="font-size: 14px;">{{ record.report }}</td>
-                    </tr>
-                {% endfor %}
+            <tbody id="trafficBody">
+                <!-- Data will be loaded here -->
             </tbody>
         </table>
     </div>
 </div>
+<!-- Add this modal structure at the end of your HTML body -->
 
-<!-- Use the static tag to render the image -->
-<img src="{% static '/images/9074c9e9-fe5d-4ca1-8ac8-cdc0ca4b79b3.jpg' %}" alt="some image">
+<div class="modal fade" id="videoModal" tabindex="-1" role="dialog" aria-labelledby="videoModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="videoModalLabel">Video</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <video id="videoPlayer" class="w-100" controls crossorigin playsinline>
+                    Your browser does not support the video tag.
+                </video>
+            </div>
+        </div>
+    </div>
+</div>
 
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
+
+<script>
+    
+    document.addEventListener('DOMContentLoaded', () => {
+      
+        const filterForm = document.getElementById('filterForm');
+        const resetButton = document.getElementById('resetButton');
+        let allData = [];
+
+        // Function to render table rows
+        const renderRows = (data) => {
+            const tableBody = document.getElementById('trafficBody');
+            tableBody.innerHTML = ''; // Clear the existing table content
+
+            data.forEach(record => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${record.id}</td>
+                    <td>${record.date}</td>
+                    <td>${record.time}</td>
+                    <td>${record.location}</td>
+                    <td>${record.number_plate}</td>
+                    <td>${record.owner_name}</td>
+                    <td>${record.violation_type}</td>
+                    <td>${record.section}</td>
+                    <td>
+                        <a href="${record.image}" data-lightbox="images" data-title="Traffic Image">
+                            Click here for image
+                        </a>
+                    </td>
+                    <td>
+                <a class="video-trigger cursor-pointer" data-toggle="modal"
+                    data-target="#videoModal" data-src="${record.video}">
+                    Click here for video
+                </a>
+            </td>
+                    <td>${record.camera}</td>
+                    <td>
+                        <a class="report-link" href="${record.report}" download="report.txt">
+                            Download Report
+                        </a>
+                    </td>
+                `;
+                tableBody.appendChild(row);
+            });
+            const videoTriggers = document.querySelectorAll('.video-trigger');
+    videoTriggers.forEach(trigger => {
+        trigger.addEventListener('click', function () {
+            const videoSrc = this.getAttribute('data-src');
+            const videoPlayer = document.getElementById('videoPlayer');
+            videoPlayer.src = videoSrc;
+            videoPlayer.autoplay = true;
+        videoPlayer.load();
+        });
+    });
+        };
+
+        // Fetch all data initially
+        fetch(`/traffic/`)
+            .then(response => response.json())
+            .then(data => {
+                let allData = data; // Define allData variable here
+
+                // Function to render rows based on filtered data
+                const renderFilteredData = (filteredData) => {
+                    renderRows(filteredData); // Render filtered data in the table
+                };
+                const handleCSVDownload = (filteredData) => {
+                    const csv = Papa.unparse(filteredData);
+
+                    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+                    const link = document.createElement('a');
+                    const url = URL.createObjectURL(blob);
+
+                    link.setAttribute('href', url);
+                    link.setAttribute('download', 'filtered_data.csv');
+                    link.style.visibility = 'hidden';
+
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                };
+
+                const filterForm = document.getElementById('filterForm'); // Assuming filterForm is the ID of your form
+                const resetButton = document.getElementById('resetButton'); // Assuming resetButton is the ID of your reset button
+
+                // Function to create and populate dropdown options
+                const createAndPopulateDropdown = (fieldName, options) => {
+                    const selectElement = document.createElement('select');
+                    selectElement.name = fieldName;
+                    selectElement.classList.add('form-control'); // Adding Bootstrap class for styling
+                    const defaultOption = document.createElement('option');
+                    defaultOption.text = `Select ${fieldName}`;
+                    defaultOption.value = '';
+                    selectElement.appendChild(defaultOption);
+
+                    options.forEach(option => {
+                        const optionElement = document.createElement('option');
+                        optionElement.value = option;
+                        optionElement.text = option;
+                        selectElement.appendChild(optionElement);
+                    });
+
+                    // Replace existing input with the dropdown
+                    const inputField = filterForm.querySelector(`[name=${fieldName}]`);
+                    inputField.replaceWith(selectElement);
+                };
+
+                // Extract unique values for Location, Violation type, and Camera
+                const locations = [...new Set(allData.map(record => record.location))];
+                const violationTypes = [...new Set(allData.map(record => record.violation_type))]; // Adjust the property name here
+                const cameras = [...new Set(allData.map(record => record.camera))];
+
+                // Create and populate dropdowns for Location, Violation type, and Camera
+                createAndPopulateDropdown('location', locations);
+                createAndPopulateDropdown('violation_type', violationTypes);
+                createAndPopulateDropdown('camera', cameras);
+
+                // Handle form submission
+                filterForm.addEventListener('submit', function (event) {
+                    event.preventDefault();
+                    const formData = new FormData(filterForm);
+
+                    const fromDate = formData.get('from_date');
+                    const toDate = formData.get('to_date');
+                    const location = formData.get('location');
+                    const violationType = formData.get('violation_type');
+                    const camera = formData.get('camera');
+
+                    const filteredData = allData.filter(record => {
+                        const recordDate = new Date(record.date);
+
+                        const isDateInRange = (!fromDate && !toDate) || // No date filter provided, return all data
+                            (fromDate && !toDate && recordDate.getTime() === new Date(fromDate).getTime()) || // Filter by single date
+                            (fromDate && toDate && recordDate >= new Date(fromDate) && recordDate <= new Date(toDate)); // Filter by date range
+
+                        const matchesLocation = !location || record.location.toLowerCase().includes(location.toLowerCase());
+                        const matchesViolationType = !violationType || record.violation_type.toLowerCase().includes(violationType.toLowerCase());
+                        const matchesCamera = !camera || record.camera.toLowerCase().includes(camera.toLowerCase());
+
+                        return isDateInRange && matchesLocation && matchesViolationType && matchesCamera;
+                    });
+
+                    renderFilteredData(filteredData); // Render filtered data in the table
+                });
+
+                const downloadButton = document.getElementById('downloadButton');
+downloadButton.addEventListener('click', () => {
+    const formData = new FormData(filterForm);
+
+    const fromDate = formData.get('from_date');
+    const toDate = formData.get('to_date');
+    const location = formData.get('location');
+    const violationType = formData.get('violation_type');
+    const camera = formData.get('camera');
+
+    fetch(`/traffic/?from_date=${fromDate}&to_date=${toDate}&location=${location}&violation_type=${violationType}&camera=${camera}`)
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+            return response.json(); // Parse the JSON response
+        })
+        .then(data => {
+            const csv = convertToCSV(data); // Convert JSON to CSV format (you need to implement this function)
+            
+            // Create a Blob and download the file
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            const url = URL.createObjectURL(blob);
+
+            link.setAttribute('href', url);
+            link.setAttribute('download', 'filtered_data.csv');
+            link.style.visibility = 'hidden';
+
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        })
+        .catch(error => console.error('Error:', error));
+});
+
+function convertToCSV(jsonData) {
+    const header = Object.keys(jsonData[0]).join(','); // Extracting keys as header row
+    const rows = jsonData.map(obj => Object.values(obj).map(val => `"${val}"`).join(',')); // Extracting values as CSV rows
+
+    return `${header}\n${rows.join('\n')}`; // Combine header and rows with newlines
+}
+
+
+                // Handle reset button click
+                resetButton.addEventListener('click', function () {
+                    filterForm.reset(); // Reset form fields
+                    renderFilteredData(allData); // Render all data again
+                });
+
+                // Initial rendering of all data
+                renderFilteredData(allData);
+                
+            })
+            .catch(error => console.error('Error:', error));
+    })
+</script>
 
 {% endblock %}

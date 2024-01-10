@@ -6,24 +6,26 @@ from uuid import uuid4
 from django.utils import timezone
 
 
+STATIC_DIR = 'static'  # Define your static folder
 
 def unique_image_path(instance, filename):
     ext = filename.split('.')[-1]
     filename = f"{uuid4()}.{ext}"
-    return os.path.join('images', filename)
+    return os.path.join(STATIC_DIR, 'images', filename)
 
 def unique_video_path(instance, filename):
     ext = filename.split('.')[-1]
     filename = f"{uuid4()}.{ext}"
-    return os.path.join('videos', filename)
+    return os.path.join(STATIC_DIR, 'videos', filename)
 
 def unique_report_path(instance,filename):
     ext = filename.split('.')[-1]
     filename = f"{uuid4()}.{ext}"
-    return os.path.join('videos', filename)
+    return os.path.join(STATIC_DIR, 'report', filename)
+
 
 class Traffic(models.Model):
-    date = models.DateField(auto_now_add=True)
+    date = models.DateField()
     time = models.CharField(max_length=10,blank=True)
     location = models.CharField(max_length=100)
     number_plate = models.CharField(max_length=15)
